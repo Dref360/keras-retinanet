@@ -136,7 +136,7 @@ def create_generators(args):
             batch_size=args.batch_size
         )
 
-        if args.val_path:
+        if args.val:
             validation_generator = CSVGenerator(
                 args.val_annotations,
                 args.classes,
@@ -183,7 +183,7 @@ def parse_args():
     csv_parser = subparsers.add_parser('csv')
     csv_parser.add_argument('annotations', help='Path to CSV file containing annotations for training.')
     csv_parser.add_argument('classes', help='Path to a CSV file containing class label mapping.')
-    csv_parser.add_argument('--val-annotations', help='Path to CSV file containing annotations for validation (optional).')
+    csv_parser.add_argument('--val-annotations',dest='val', help='Path to CSV file containing annotations for validation (optional).')
 
     parser.add_argument('--weights', help='Weights to use for initialization (defaults to ImageNet).', default='imagenet')
     parser.add_argument('--batch-size', help='Size of the batches.', default=1, type=int)

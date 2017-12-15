@@ -60,7 +60,7 @@ def _read_annotations(csv_reader, classes):
     result = {}
     for line, row in enumerate(csv_reader):
         try:
-            img_file, x1, y1, x2, y2, class_name = row
+            img_file,class_name, x1, y1, x2, y2 = row
         except ValueError:
             raise_from(ValueError('line {}: format should be \'img_file,x1,y1,x2,y2,class_name\' or \'img_file,,,,,\''.format(line)), None)
 
@@ -75,7 +75,8 @@ def _read_annotations(csv_reader, classes):
         y1 = _parse(y1, int, 'line {}: malformed y1: {{}}'.format(line))
         x2 = _parse(x2, int, 'line {}: malformed x2: {{}}'.format(line))
         y2 = _parse(y2, int, 'line {}: malformed y2: {{}}'.format(line))
-
+        x2 = max(x2,x1+1)
+        y2 = max(y2,y1+1)
         # Check that the bounding box is valid.
         if x2 <= x1:
             raise ValueError('line {}: x2 ({}) must be higher than x1 ({})'.format(line, x2, x1))
@@ -118,7 +119,7 @@ class CSVGenerator(Generator):
 
         # Take base_dir from annotations file if not explicitly specified.
         if self.base_dir is None:
-            self.base_dir = os.path.dirname(csv_data_file)
+            self.base_dir = os.path.join(os.path.dirname(csv_data_file),'train' if 'train' in csv_data_file else 'test')
 
         # parse the provided class file
         try:
@@ -154,7 +155,7 @@ class CSVGenerator(Generator):
         return self.labels[label]
 
     def image_path(self, image_index):
-        return os.path.join(self.base_dir, self.image_names[image_index])
+        return os.path.join(self.base_dir, self.image_names[image_index]+'.jpg')
 
     def image_aspect_ratio(self, image_index):
         # PIL is fast for metadata
