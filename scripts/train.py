@@ -52,8 +52,11 @@ def create_models(num_classes, weights='imagenet', multi_gpu=0):
         model = ResNet50RetinaNet(image, num_classes=num_classes, weights=weights, nms=False)
         training_model = model
 
-    # append NMS for prediction
-    detections = keras_retinanet.layers.NonMaximumSuppression(name='nms')(model.outputs)
+    # append NMS for prediction only
+    classification   = model.outputs[1]
+    detections       = model.outputs[2]
+    boxes            = keras.layers.Lambda(lambda x: x[:, :, :4])(detections)
+    detections       = keras_retinanet.layers.NonMaximumSuppression(name='nms')([boxes, classification, detections])
     prediction_model = keras.models.Model(inputs=model.inputs, outputs=model.outputs[:2] + [detections])
 
     # compile model
@@ -68,11 +71,17 @@ def create_models(num_classes, weights='imagenet', multi_gpu=0):
     return model, training_model, prediction_model
 
 
-def create_callbacks(model, training_model, prediction_model, validation_generator, dataset_type):
+def create_callbacks(model, training_model, prediction_model, validation_generator, dataset_type, snapshot_path):
     callbacks = []
 
     # save the prediction model
-    checkpoint = keras.callbacks.ModelCheckpoint(os.path.join('snapshots', 'resnet50_{dataset_type}_{{epoch:02d}}.h5'.format(dataset_type=dataset_type)), verbose=1)
+    checkpoint = keras.callbacks.ModelCheckpoint(
+        os.path.join(
+            snapshot_path,
+            'resnet50_{dataset_type}_{{epoch:02d}}.h5'.format(dataset_type=dataset_type)
+        ),
+        verbose=1
+    )
     checkpoint = RedirectModel(checkpoint, prediction_model)
     callbacks.append(checkpoint)
 
@@ -137,7 +146,7 @@ def create_generators(args):
         )
 
         if args.val:
-            validation_generator = CSVGenerator(
+             validation_generator = CSVGenerator(
                 args.val_annotations,
                 args.classes,
                 val_image_data_generator,
@@ -146,7 +155,7 @@ def create_generators(args):
         else:
             validation_generator = None
     else:
-        raise ValueError('Invalid data type received: {}'.format(dataset_type))
+        raise ValueError('Invalid data type received: {}'.format(args.dataset_type))
 
     return train_generator, validation_generator
 
@@ -189,6 +198,7 @@ def parse_args():
     parser.add_argument('--batch-size', help='Size of the batches.', default=1, type=int)
     parser.add_argument('--gpu', help='Id of the GPU to use (as reported by nvidia-smi).')
     parser.add_argument('--multi-gpu', help='Number of GPUs to use for parallel processing.', type=int, default=0)
+    parser.add_argument('--snapshot-path', help='Path to store snapshots of models during training (defaults to \'./snapshots\')', default='./snapshots')
 
     return check_args(parser.parse_args())
 
@@ -215,7 +225,7 @@ if __name__ == '__main__':
     print(model.summary())
 
     # create the callbacks
-    callbacks = create_callbacks(model, training_model, prediction_model, validation_generator, args.dataset_type)
+    callbacks = create_callbacks(model, training_model, prediction_model, validation_generator, args.dataset_type, args.snapshot_path)
 
     # start training
     training_model.fit_generator(

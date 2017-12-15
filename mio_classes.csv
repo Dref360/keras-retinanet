@@ -1,0 +1,11 @@
+articulated_truck, 0
+bicycle, 1
+bus, 2
+car, 3
+motorcycle, 4
+non-motorized_vehicle, 5
+motorized_vehicle, 6
+pedestrian, 7
+pickup_truck, 8
+single_unit_truck, 9
+work_van, 10
